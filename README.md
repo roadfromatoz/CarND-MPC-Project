@@ -2,6 +2,59 @@
 Self-Driving Car Engineer Nanodegree Program
 
 ---
+## Project Writeup
+
+
+This model uses ipopt to find the minimum cost by FG_eval operator method. There are in total six states `psi`, `v`, `cte`, `epsi`, `delta`, and `a`, plus `x` and `y` positions.
+
+The cost functions is on cte and epsi (which controls the car on the path) as well as velocity vs reference speed `60 mph`. I set the coefficiency of speed to 0.20 because car speed is already large.
+
+### Choices for `dt` and `N`
+
+I set `dt` to `0.1` to ensure a fast response time. Since we only use several points of predicted path, I set `N` to small number `20`. N * dt = 2 seconds is the prediction path length.
+
+### Update
+
+update the cte, epsi:
+
+```
+    auto coeffs = polyfit(x_path, y_path, 3);
+    double cte = polyeval(coeffs, 0);
+    double epsi = -atan(coeffs[1]);
+
+    px = v * 1.67 / 3600 * lag; // cos(psi) with small value is almost 1
+    py = 0;  // the sin(psi) with small psi is almost 0
+    v  = v + prev_a_ * lag;
+```
+
+---
+
+### Model details.
+
+There are two actuators, delta and a, which are tuned by `IPOPT` to make sure the cost are low.
+
+The actuators value set to fields of `steering_angle` and `throttle` in the json output. The steering angle divided by `deg2rad(25)`, and turned to negative, because it is positive number when turn right, while normal angle is positive when turn anti-clockwise. I also set the `mpc_x` and `mpc_y` with the predicted position information.
+
+I use the return value indexed `delta_start` and `a_start` from `IPOPT::solve_result" as `steering_angle` and `throttle` to update in the json message. The value of steering_angle will be divided by `deg2rad(25)`.
+
+
+---
+
+### Lag compensation
+
+I used `100 ms` latency specified in main.cpp.
+
+```
+	double lag = dt / 3600; // dt is 0.1
+        px = v * cos(psi) * lag;
+        py = v * sin(psi) * lag;
+        v  = v + prev_a_ * lag;
+        cte = cte + (v * sin(epsi) * lag);
+        epsi = epsi + v * prev_delta_ / Lf * lag;
+```
+
+
+---
 
 ## Dependencies
 
@@ -19,7 +72,7 @@ Self-Driving Car Engineer Nanodegree Program
   * Run either `install-mac.sh` or `install-ubuntu.sh`.
   * If you install from source, checkout to commit `e94b6e1`, i.e.
     ```
-    git clone https://github.com/uWebSockets/uWebSockets 
+    git clone https://github.com/uWebSockets/uWebSockets
     cd uWebSockets
     git checkout e94b6e1
     ```
@@ -42,7 +95,7 @@ Self-Driving Car Engineer Nanodegree Program
        per this [forum post](https://discussions.udacity.com/t/incorrect-checksum-for-freed-object/313433/19).
   * Linux
     * You will need a version of Ipopt 3.12.1 or higher. The version available through `apt-get` is 3.11.x. If you can get that version to work great but if not there's a script `install_ipopt.sh` that will install Ipopt. You just need to download the source from the Ipopt [releases page](https://www.coin-or.org/download/source/Ipopt/).
-    * Then call `install_ipopt.sh` with the source directory as the first argument, ex: `sudo bash install_ipopt.sh Ipopt-3.12.1`. 
+    * Then call `install_ipopt.sh` with the source directory as the first argument, ex: `sudo bash install_ipopt.sh Ipopt-3.12.1`.
   * Windows: TODO. If you can use the Linux subsystem and follow the Linux instructions.
 * [CppAD](https://www.coin-or.org/CppAD/)
   * Mac: `brew install cppad`
@@ -124,7 +177,3 @@ that's just a guess.
 
 One last note here: regardless of the IDE used, every submitted project must
 still be compilable with cmake and make./
-
-## How to write a README
-A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
-
